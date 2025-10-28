@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import re
 
-st.set_page_config(page_title="Soepverkoop Betaalchecker", layout="wide")
-st.title("Soepverkoop Betaalchecker")
+st.set_page_config(page_title="Betaalchecker", layout="wide")
+st.title("Betaalchecker")
 
 st.markdown("""
 Upload hieronder je bestanden:
@@ -24,10 +24,12 @@ def normalize_text(text):
     return re.sub(r'\W+', '', str(text).lower())
 
 def coda_to_list(coda_file):
-    # coda_file is CSV voor test (of echte CODA, gewoon als CSV)
-    df = pd.read_csv(coda_file, sep=None, engine='python')  # automatisch separator detecteren
-    if 'Communication' in df.columns:
-        return df['Communication'].dropna().astype(str).str.strip().tolist()
+    # CODA als CSV
+    df = pd.read_csv(coda_file, sep=None, engine='python')  # auto detect separator
+    # Check voor mogelijke kolommen met betalingsreferentie
+    for col in ['Communication', 'Omschrijving', 'Message', 'Betaalcode']:
+        if col in df.columns:
+            return df[col].dropna().astype(str).str.strip().tolist()
     return []
 
 if bestellingen_file and (payconiq_file or coda_file):
@@ -35,42 +37,45 @@ if bestellingen_file and (payconiq_file or coda_file):
         bestellingen = pd.read_excel(bestellingen_file)
     else:
         bestellingen = pd.read_csv(bestellingen_file)
-    bestellingen["Mededeling"] = bestellingen["Mededeling"].astype(str).str.strip()
+
+    # Welke kolom bevat de bestelcode/mededeling?
+    bestelkolom = st.selectbox(
+        "Selecteer de kolom met de bestelcode/mededeling",
+        bestellingen.columns
+    )
 
     alle_betalingen = []
 
     if payconiq_file:
-        payconiq_df = pd.read_csv(payconiq_file, sep=";")
-        if 'Message' in payconiq_df.columns:
-            alle_betalingen += payconiq_df['Message'].dropna().astype(str).str.strip().tolist()
+        payconiq_df = pd.read_csv(payconiq_file, sep=None, engine='python')
+        for col in ['Message', 'Omschrijving', 'Betalingscode']:
+            if col in payconiq_df.columns:
+                alle_betalingen += payconiq_df[col].dropna().astype(str).str.strip().tolist()
+                break
 
     if coda_file:
         alle_betalingen += coda_to_list(coda_file)
 
-    def is_betaald(mededeling):
-        m_norm = normalize_text(mededeling)
+    def is_betaald(code):
+        code_norm = normalize_text(code)
         for b in alle_betalingen:
-            if normalize_text(b) in m_norm:
+            if normalize_text(b) in code_norm:
                 return True
         return False
 
-    if 'Mededeling' not in bestellingen.columns:
-        st.error("Kolom 'Mededeling' ontbreekt in bestellingen")
-    else:
-        bestellingen["Betaald"] = bestellingen["Mededeling"].apply(is_betaald)
+    bestellingen["Betaald"] = bestellingen[bestelkolom].apply(is_betaald)
 
-        st.subheader("Resultaten")
-        def highlight_betaald(val):
-            color = '#b6f2b6' if val else '#f5b7b1'
-            return f'background-color: {color}'
+    st.subheader("Resultaten")
+    def highlight_betaald(val):
+        return 'background-color: #b6f2b6' if val else 'background-color: #f5b7b1'
 
-        st.dataframe(bestellingen.style.applymap(highlight_betaald, subset=['Betaald']))
+    st.dataframe(bestellingen.style.applymap(highlight_betaald, subset=['Betaald']))
 
-        st.download_button(
-            "Download resultaat",
-            data=bestellingen.to_csv(index=False).encode('utf-8'),
-            file_name="betaalcontrole.csv",
-            mime="text/csv"
-        )
+    st.download_button(
+        "Download resultaat",
+        data=bestellingen.to_csv(index=False).encode('utf-8'),
+        file_name="betaalcontrole.csv",
+        mime="text/csv"
+    )
 else:
     st.info("Upload minstens de bestellingen en één betalingsbron (Payconiq of CODA).")
