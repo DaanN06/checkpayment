@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title=" Betaalchecker", layout="wide")
-st.title(" Betaalchecker")
+st.set_page_config(page_title="Soepverkoop Betaalchecker", layout="wide")
+st.title("Soepverkoop Betaalchecker")
 
 st.markdown("""
 Upload hieronder je bestanden:
@@ -24,10 +24,10 @@ def coda_to_csv(coda_file):
     lines = coda_file.read().decode("latin-1").splitlines()
     data = []
     for line in lines:
-        # voorbeeld: mededeling staat op posities 50-120
-        mededeling = line[49:120].strip()
-        if mededeling:
-            data.append([mededeling.strip()])
+        if line.startswith(":86:"):
+            mededeling = line[4:].strip()
+            if mededeling:
+                data.append([mededeling])
     df = pd.DataFrame(data, columns=["Mededeling"])
     return df
 
