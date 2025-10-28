@@ -33,15 +33,19 @@ def coda_to_list(coda_file):
     return []
 
 if bestellingen_file and (payconiq_file or coda_file):
+    # Bestellingen inlezen
     if bestellingen_file.name.endswith(".xlsx"):
         bestellingen = pd.read_excel(bestellingen_file)
     else:
         bestellingen = pd.read_csv(bestellingen_file)
 
-    # Welke kolom bevat de bestelcode/mededeling?
+    # Kolomnamen strippen van spaties
+    bestellingen.columns = [col.strip() for col in bestellingen.columns]
+
+    # Dropdown met schone kolomnamen
     bestelkolom = st.selectbox(
-        "Selecteer de kolom met de bestelcode/mededeling",
-        bestellingen.columns
+    "Selecteer de kolom met de bestelcode/mededeling",
+        bestellingen.columns.tolist()
     )
 
     alle_betalingen = []
