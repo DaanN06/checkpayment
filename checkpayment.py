@@ -8,7 +8,7 @@ st.markdown("""
 Upload hieronder je drie bestanden:
 1. Bestellingen (.xlsx of .csv)  
 2. Payconiq-export (.csv)  
-3. CODA-export (.csv)
+3. CODA-bestand (.coda of .csv)
 """)
 
 col1, col2, col3 = st.columns(3)
@@ -17,7 +17,19 @@ with col1:
 with col2:
     payconiq_file = st.file_uploader("Payconiq CSV", type=["csv"])
 with col3:
-    coda_file = st.file_uploader("CODA CSV", type=["csv"])
+    coda_file = st.file_uploader("CODA-bestand", type=["coda", "csv"])
+
+def coda_to_csv(coda_file):
+    coda_file.seek(0)
+    lines = coda_file.read().decode("latin-1").splitlines()
+    data = []
+    for line in lines:
+        # voorbeeld: mededeling staat op posities 50-120
+        mededeling = line[49:120].strip()
+        if mededeling:
+            data.append([mededeling])
+    df = pd.DataFrame(data, columns=["Mededeling"])
+    return df
 
 if bestellingen_file and (payconiq_file or coda_file):
     if bestellingen_file.name.endswith(".xlsx"):
@@ -33,10 +45,13 @@ if bestellingen_file and (payconiq_file or coda_file):
 
     coda_mededelingen = []
     if coda_file:
-        coda_df = pd.read_csv(coda_file, sep=";")
-        # pas kolomnaam aan als nodig
-        if 'Mededeling' in coda_df.columns:
-            coda_mededelingen = coda_df['Mededeling'].dropna().astype(str).tolist()
+        if coda_file.name.endswith(".csv"):
+            coda_df = pd.read_csv(coda_file, sep=";")
+            if 'Mededeling' in coda_df.columns:
+                coda_mededelingen = coda_df['Mededeling'].dropna().astype(str).tolist()
+        else:  # .coda bestand
+            coda_df = coda_to_csv(coda_file)
+            coda_mededelingen = coda_df['Mededeling'].tolist()
 
     alle_betalingen = payconiq_mededelingen + coda_mededelingen
 
