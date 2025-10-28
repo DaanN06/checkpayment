@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Soepverkoop Betaalchecker", layout="wide")
-st.title("Soepverkoop Betaalchecker")
+st.set_page_config(page_title=" Betaalchecker", layout="wide")
+st.title(" Betaalchecker")
 
 st.markdown("""
 Upload hieronder je bestanden:
@@ -27,7 +27,7 @@ def coda_to_csv(coda_file):
         # voorbeeld: mededeling staat op posities 50-120
         mededeling = line[49:120].strip()
         if mededeling:
-            data.append([mededeling])
+            data.append([mededeling.strip()])
     df = pd.DataFrame(data, columns=["Mededeling"])
     return df
 
@@ -37,11 +37,13 @@ if bestellingen_file and (payconiq_file or coda_file):
     else:
         bestellingen = pd.read_csv(bestellingen_file)
 
+    bestellingen["Mededeling"] = bestellingen["Mededeling"].astype(str).str.strip()
+
     payconiq_mededelingen = []
     if payconiq_file:
         payconiq_df = pd.read_csv(payconiq_file, sep=";")
         if 'Message' in payconiq_df.columns:
-            payconiq_mededelingen = payconiq_df['Message'].dropna().astype(str).tolist()
+            payconiq_mededelingen = payconiq_df['Message'].dropna().astype(str).str.strip().tolist()
 
     coda_mededelingen = []
     if coda_file:
@@ -53,7 +55,11 @@ if bestellingen_file and (payconiq_file or coda_file):
     def is_betaald(mededeling):
         if not isinstance(mededeling, str):
             return False
-        return any(mededeling.lower() in b.lower() for b in alle_betalingen)
+        m = mededeling.strip().lower()
+        for b in alle_betalingen:
+            if m in b.lower():
+                return True
+        return False
 
     if 'Mededeling' not in bestellingen.columns:
         st.error("Kolom 'Mededeling' ontbreekt in bestellingen")
