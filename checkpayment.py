@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
-from io import StringIO
-from coda import CodaFile
+from coda import parse
 
-st.set_page_config(page_title="Soepverkoop Betaalchecker", layout="wide")
-st.title("Soepverkoop Betaalchecker")
+st.set_page_config(page_title=" Betaalchecker", layout="wide")
+st.title(" Betaalchecker")
 
 st.markdown("""
 Upload hieronder je drie bestanden:
@@ -35,10 +34,10 @@ if bestellingen_file and (payconiq_file or coda_file):
     coda_mededelingen = []
     if coda_file:
         coda_bytes = coda_file.read()
-        coda = CodaFile(coda_bytes)
-        for tx in coda.transactions:
-            if tx.communication:
-                coda_mededelingen.append(tx.communication)
+        coda_data = parse(coda_bytes)
+        for tx in coda_data['transactions']:
+            if tx.get('communication'):
+                coda_mededelingen.append(tx['communication'])
 
     alle_betalingen = payconiq_mededelingen + coda_mededelingen
 
