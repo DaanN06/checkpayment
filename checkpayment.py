@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 st.set_page_config(page_title="Betaalchecker", layout="wide")
-st.title("Soepverkoop Betaalchecker")
+st.title("Betaalchecker")
 
 st.markdown("""
 Upload hieronder je bestanden:
