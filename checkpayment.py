@@ -68,7 +68,7 @@ if bestellingen_file and (payconiq_file or coda_file):
     # Payconiq
     if payconiq_file:
         payconiq_df = read_csv_auto(payconiq_file)
-        for col in ["Message", "Mededeling", "Omschrijving"]:
+        for col in ["Message", "Mededeling", "Omschrijving","Description"]:
             if col in payconiq_df.columns:
                 alle_betalingen += payconiq_df[col].dropna().astype(str).str.strip().tolist()
                 break
