@@ -9,7 +9,7 @@ st.markdown("""
 Upload hieronder je bestanden:
 1. **Bestellingen** (.xlsx of .csv)  
 2. **Payconiq-export** (.csv)  
-3. **Argenta-export (CODA)** (.xlsx, .csv of .coda)
+3. **Argenta-export** (.csv, .xlsx of .coda)
 """)
 
 col1, col2, col3 = st.columns(3)
@@ -18,38 +18,46 @@ with col1:
 with col2:
     payconiq_file = st.file_uploader("Payconiq CSV", type=["csv"])
 with col3:
-    coda_file = st.file_uploader("Argenta-bestand", type=["xlsx", "csv", "coda"])
+    coda_file = st.file_uploader("Argenta-bestand", type=["csv", "xlsx", "coda"])
 
+# --- Helpers ---
 def normalize_text(text):
-    """Verwijdert hoofdletters en niet-alfanumerieke tekens."""
+    """Maak tekst lowercase en verwijder speciale tekens voor vergelijking."""
     return re.sub(r'\W+', '', str(text).lower())
 
+def read_csv_auto(file):
+    """Detecteert automatisch het scheidingsteken in CSV (komma of puntkomma)."""
+    try:
+        df = pd.read_csv(file, sep=None, engine='python')
+    except Exception:
+        df = pd.read_csv(file, sep=';', engine='python')
+    df.columns = [c.strip() for c in df.columns]
+    return df
+
 def coda_to_list(coda_file):
-    """Leest Argenta- of CODA-bestand en zoekt de juiste kolom."""
-    # Probeer automatisch scheidingsteken te detecteren
+    """Leest Argenta / CODA / CSV in en zoekt kolom met mededelingen."""
     if coda_file.name.endswith(".xlsx"):
         df = pd.read_excel(coda_file)
     else:
-        df = pd.read_csv(coda_file, sep=None, engine='python')
+        df = read_csv_auto(coda_file)
 
-    # Kolomnamen strippen
-    df.columns = [c.strip() for c in df.columns]
-
-    # Gebruik 'Mededeling' indien aanwezig, anders fallback
     for col in ["Mededeling", "Communication", "Omschrijving", "Beschrijving"]:
         if col in df.columns:
             return df[col].dropna().astype(str).str.strip().tolist()
-    return []
 
+    # Als de kolom niet gevonden wordt, probeer alles te combineren in tekst
+    return df.astype(str).apply(lambda r: " ".join(r), axis=1).tolist()
+
+# --- Hoofdlogica ---
 if bestellingen_file and (payconiq_file or coda_file):
     # Bestellingen inlezen
     if bestellingen_file.name.endswith(".xlsx"):
         bestellingen = pd.read_excel(bestellingen_file)
     else:
-        bestellingen = pd.read_csv(bestellingen_file)
+        bestellingen = read_csv_auto(bestellingen_file)
+
     bestellingen.columns = [c.strip() for c in bestellingen.columns]
 
-    # Kolom kiezen waarin de bestelcode staat
     bestelkolom = st.selectbox(
         "Selecteer de kolom met de bestelcode/mededeling (uit je bestellingenbestand)",
         bestellingen.columns.tolist()
@@ -59,8 +67,7 @@ if bestellingen_file and (payconiq_file or coda_file):
 
     # Payconiq
     if payconiq_file:
-        payconiq_df = pd.read_csv(payconiq_file, sep=None, engine='python')
-        payconiq_df.columns = [c.strip() for c in payconiq_df.columns]
+        payconiq_df = read_csv_auto(payconiq_file)
         for col in ["Message", "Mededeling", "Omschrijving"]:
             if col in payconiq_df.columns:
                 alle_betalingen += payconiq_df[col].dropna().astype(str).str.strip().tolist()
